@@ -130,12 +130,13 @@ function getTopSites(): Promise<chrome.topSites.MostVisitedURL[]> {
 
 .card {
   flex: 1;
-  background-color: rgba(255, 255, 255, 0.1); /* 半透明卡片背景 */
-  backdrop-filter: blur(10px); /* 毛玻璃效果 */
+  /* 优化毛玻璃效果：降低模糊度，提高背景和边框的不透明度以增强清晰度 */
+  background-color: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
   padding: 1.5rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   align-self: flex-start;
   color: white;
 }
