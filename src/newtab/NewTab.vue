@@ -1,48 +1,43 @@
 <template>
   <main class="container">
-    <section class="card content-card">
-      <h2>Top site</h2>
-      <div class="grid-list">
-        <a v-for="site in topSites" :key="site.url" :href="site.url">
-          {{  site.title }}
+    <!-- 常用网站 -->
+    <section class="card">
+      <h2>常用网站</h2>
+      <div v-if="topSites.length > 0" class="grid-list">
+        <a v-for="site in topSites" :key="site.url" :href="site.url" :title="site.title">
+          {{ site.title }}
         </a>
       </div>
+      <div v-else class="status-message">
+        {{ topSitesStatusMessage }}
+      </div>
     </section>
-    <section class="card content-card">
-      <div class="content-wrapper">
-        <h2>{{ bookmarkFolderName }}</h2>
-        <div v-if="bookmarkRoot" class="bookmark-list">
-          <ul>
-            <BookmarkNode
-              v-for="node in bookmarkRoot.children"
-              :key="node.id"
-              :node="node"
-            />
-          </ul>
-        </div>
-        <div v-else class="status-message">
-          {{ bookmarkStatusMessage }}
-        </div>
+    <!-- 书签 -->
+    <section class="card">
+      <h2>{{ bookmarkFolderName }}</h2>
+      <div v-if="bookmarkRoot" class="bookmark-list">
+        <ul>
+          <BookmarkNode
+            v-for="node in bookmarkRoot.children"
+            :key="node.id"
+            :node="node"
+          />
+        </ul>
+      </div>
+      <div v-else class="status-message">
+        {{ bookmarkStatusMessage }}
       </div>
     </section>
   </main>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import BookmarkNode from '../components/BookmarkNode.vue'
 
-const link = ref('https://github.com/r404r/')
-
-const getTime = () => {
-  const date = new Date()
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  return `${hour}:${minute}`
-}
-
-let time = ref(getTime())
-let intervalor: any = null
+// --- 常用网站状态 ---
+const topSites = ref<chrome.topSites.MostVisitedURL[]>([]);
+const topSitesStatusMessage = ref('正在加载常用网站...');
 
 // --- 书签状态 ---
 // 在这里修改为你想要展示的书签文件夹名称
@@ -50,16 +45,17 @@ const bookmarkFolderName = 'Bookmarks bar';
 const bookmarkRoot = ref<chrome.bookmarks.BookmarkTreeNode | null>(null);
 const bookmarkStatusMessage = ref('正在加载书签...');
 
-// 2. 在组件加载完成后，调用 API 获取数据
-onMounted( async() => {
-  intervalor = setInterval(() => {
-    time.value = getTime()
-  }, 1000)
-
+// 在组件加载完成后，调用 API 获取数据
+onMounted(async () => {
+  // 1. 获取常用网站
   try {
     topSites.value = await getTopSites();
+    if (topSites.value.length === 0) {
+      topSitesStatusMessage.value = '暂无常用网站。';
+    }
   } catch (e) {
-    console.error('get mostly access site error: ', e);
+    topSitesStatusMessage.value = '加载常用网站时出错。';
+    console.error(topSitesStatusMessage.value, e);
   }
 
   // 2. 获取书签
@@ -77,13 +73,6 @@ onMounted( async() => {
     console.error(bookmarkStatusMessage.value, e);
   }
 })
-
-onUnmounted(() => {
-  clearInterval(intervalor)
-})
-
-// 1. 定义一个响应式变量来存储网站列表
-const topSites = ref<chrome.topSites.MostVisitedURL[]>([]);
 
 // 封装成 Promise 更易用
 function getTopSites(): Promise<chrome.topSites.MostVisitedURL[]> {
@@ -115,138 +104,69 @@ function findFolder(nodes: chrome.bookmarks.BookmarkTreeNode[], name: string): c
   }
   return null;
 }
-
 </script>
 
 <style scoped>
-:root {
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Open Sans',
-    'Helvetica Neue',
-    sans-serif;
-
-  color-scheme: light dark;
-  box-sizing: border-box;
-}
-
-body {
-  min-width: 20rem;
-  margin: 0;
-  /* 横向滚动来切换卡片 */
-  display: flex;
-  width: 300vw; /* 3个 section，所以是 300vw */
-}
-
-section::before {
-  content: '';
-  position: fixed;
-  z-index: -1;
-  width: 100vw;
-  height: 100vh;
-  background-image: url('https://source.unsplash.com/random');
-  background-size: cover;
-  filter: blur(10px);
-}
-
-section {
-  width: 100vw;
-  height: 200vh;
-
-  display: flex;
-  flex-direction: column;
-  justify-content: center; /* 垂直居中 */
-  align-items: center;
-  padding: 2rem;
-}
-h1 {
-  color: white;
-  text-shadow: 0 0 15px rgba(0,0,0,0.5);
-  text-transform: uppercase;
-  font-size: 6rem;
-  margin: 2rem auto;
-}
-
-.author-link {
-  font-size: 1rem;
-  margin: 0.5rem;
-  color: #cccccc;
-  text-decoration: none;
-  position: absolute;
-  bottom: 2rem;
-}
-
-.content-card {
-  justify-content: flex-start; /* 内容区从顶部开始 */
-  padding-top: 5rem;
-}
-
-.content-wrapper {
-  max-width: 600px;
-  width: 100%;
-  background-color: rgba(0, 0, 0, 0.3);
-  padding: 1.5rem 2rem;
-  border-radius: 12px;
-}
-
+/* 建议将全局样式（如字体、背景）移至全局 CSS 文件 */
 .container {
   display: flex;
-  gap: 2em;
-  padding: 2em;
-  background-color: #f0f2f5;
-  min-height: 100vh;
+  gap: 2rem;
+  padding: 2rem;
+  width: 100%;
   box-sizing: border-box;
+  min-height: 100vh;
 }
 
 .card {
-  background-color: #ffffff;
-  padding: 1.5em;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   flex: 1;
-  align-self: flex-start; /* 避免卡片被拉伸 */
+  background-color: rgba(255, 255, 255, 0.1); /* 半透明卡片背景 */
+  backdrop-filter: blur(10px); /* 毛玻璃效果 */
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  align-self: flex-start;
+  color: white;
 }
 
 h2 {
-  color: white;
   text-align: left;
   margin-top: 0;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 .grid-list a, .status-message {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: #f0f0f0;
   text-decoration: none;
   display: block;
-  padding: 8px;
-  border-radius: 4px;
+  padding: 10px;
+  border-radius: 6px;
   background-color: rgba(0, 0, 0, 0.2);
   margin-bottom: 8px;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .grid-list a:hover {
   background-color: rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
 }
 
 .bookmark-list ul {
   padding-left: 0;
+  list-style: none;
 }
 
-.folder-list ul {
-  padding-left: 0;
+.status-message {
+  background-color: transparent;
 }
 
 .error {
-  color: #d9534f;
+  color: #ff8a80; /* 更柔和的红色 */
 }
 </style>
