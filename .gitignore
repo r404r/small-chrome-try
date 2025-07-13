@@ -21,3 +21,8 @@
 
 # secrets
 secrets.*.js
+
+# editor
+# Ignore editor-specific settings and temporary files
+.vscode/*
+!.vscode/launch.json
