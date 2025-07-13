@@ -62,7 +62,7 @@ a:hover {
   cursor: pointer;
   font-weight: bold;
   font-size: 1.1rem;
-  color: white;
+  color: #42b983; /* 使用主题绿色以突出显示 */
   display: flex;
   align-items: center;
   padding: 4px;
