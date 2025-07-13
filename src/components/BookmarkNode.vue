@@ -45,7 +45,8 @@ li {
 a {
   font-size: 1rem; /* 调整字体大小以便阅读 */
   text-decoration: none;
-  color: #f0f0f0;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   display: block;
   padding: 5px 8px;
   border-radius: 4px;
@@ -65,6 +66,8 @@ a:hover {
   display: flex;
   align-items: center;
   padding: 4px;
+  /* 增强文本阴影以提高可读性 */
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
 }
 
 .folder-icon {

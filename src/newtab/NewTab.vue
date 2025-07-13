@@ -134,12 +134,14 @@ h2 {
   margin-top: 0;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  /* 增强文本阴影以提高在任何背景下的可读性 */
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
 }
 
 .grid-list a, .status-message {
   font-size: 0.9rem;
-  color: #f0f0f0;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   text-decoration: none;
   display: block;
   padding: 10px;
