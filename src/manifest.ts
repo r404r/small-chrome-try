@@ -46,7 +46,7 @@ export default defineManifest((env) => ({
       matches: ['<all_urls>'], // 建议添加，否则 content script 无法访问这些资源
     },
   ],
-  permissions: ['storage', 'sidePanel', 'topSites', 'bookmarks'],
+  permissions: ['storage', 'sidePanel', 'topSites', 'bookmarks', 'sessions'],
   chrome_url_overrides: {
     newtab: 'newtab.html', // Vite 构建后会生成 index.html
   },
