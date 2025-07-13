@@ -1,10 +1,25 @@
 <template>
   <div class="collapsible-section">
+    <!-- 可点击的头部，用于切换内容的展开/折叠状态 -->
     <div class="folder-header" @click="isExpanded = !isExpanded">
       <span :class="{ 'folder-icon': true, 'expanded': isExpanded }">▶</span>
+      <!-- 标题由父组件通过 prop 传入 -->
       <span class="folder-title">{{ title }}</span>
     </div>
+    <!-- 
+      v-show 指令用于根据 isExpanded 的值来显示或隐藏这部分内容。
+      这部分是这个组件的核心可复用性的体现。
+    -->
     <div v-show="isExpanded" class="content">
+      <!-- 
+        【核心：插槽 <slot>】
+        <slot> 是 Vue 的一个内置组件，它是一个占位符。
+        当父组件使用这个 CollapsibleSection 组件时，
+        可以像使用普通 HTML 标签一样，在它的开始和结束标签之间放入任何内容。
+        这些内容最终会被渲染到 <slot> 所在的位置。
+        这使得我们的折叠组件变得非常通用，它可以包裹任何类型的内容（列表、文本、其他组件等）。
+        例如，在 NewTab.vue 中，我们就是把“常用网站”的 <div> 列表放在了这里的 <slot> 位置。
+      -->
       <slot></slot>
     </div>
   </div>
@@ -13,11 +28,14 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+// 使用 defineProps 定义一个名为 `title` 的 prop。
+// 这意味着父组件在使用 <CollapsibleSection> 时，必须通过 `title` prop 传递一个字符串进来。
+// 例如: <CollapsibleSection title="这是一个标题">
 defineProps<{
   title: string;
 }>();
 
-// 控制文件夹是否展开的状态，默认为 true (展开)
+// 为每个组件实例创建一个独立的、响应式的状态，用于控制其是否展开。
 const isExpanded = ref(true);
 </script>
 
@@ -45,6 +63,7 @@ const isExpanded = ref(true);
   transform: rotate(90deg);
 }
 
+/* 折叠内容区域的左内边距，使其与标题下的内容对齐 */
 .content {
   padding-left: 20px;
 }
