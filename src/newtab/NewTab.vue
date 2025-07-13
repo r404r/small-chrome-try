@@ -170,7 +170,7 @@ function restoreTab(sessionId?: string) {
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.25);
-  color: white;
+  color: #42b983;
 }
 
 h2 {
