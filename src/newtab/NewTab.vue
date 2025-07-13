@@ -84,10 +84,11 @@ async function loadTopSites() {
 
 async function loadRecentlyClosedTabs() {
   try {
-    const sessions = await chrome.sessions.getRecentlyClosed({ maxResults: 15 });
+    const sessions = await chrome.sessions.getRecentlyClosed({ maxResults: 25 }); // 获取更多条目以备过滤
     const tabs = sessions
-      .filter(session => session.tab && !session.window) // 只过滤出单个标签页的会话
-      .map(session => session.tab as chrome.tabs.Tab);
+      .filter(session => session.tab && !session.window) // 过滤出单个标签页
+      .map(session => session.tab as chrome.tabs.Tab)
+      .filter(tab => tab.title && tab.url); // 【关键改动】只保留同时具有标题和 URL 的标签页
     
     recentlyClosedTabs.value = tabs;
     if (tabs.length === 0) recentlyClosedStatusMessage.value = '暂无最近关闭的标签页。';
