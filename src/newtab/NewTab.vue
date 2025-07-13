@@ -2,29 +2,28 @@
   <main class="container">
     <!-- 左侧栏 -->
     <div class="column">
-      <!-- 常用网站 -->
       <section class="card">
-        <h2>常用网站</h2>
-        <div v-if="topSites.length > 0" class="grid-list">
-          <a v-for="site in topSites" :key="site.url" :href="site.url" :title="site.title">
-            {{ site.title }}
-          </a>
-        </div>
-        <div v-else class="status-message">
-          {{ topSitesStatusMessage }}
-        </div>
-      </section>
-      <!-- 最近关闭 -->
-      <section class="card">
-        <h2>最近关闭</h2>
-        <div v-if="recentlyClosedTabs.length > 0" class="grid-list">
-          <a v-for="tab in recentlyClosedTabs" :key="tab.sessionId" :href="tab.url" :title="tab.title" @click.prevent="restoreTab(tab.sessionId)">
-            {{ tab.title }}
-          </a>
-        </div>
-        <div v-else class="status-message">
-          {{ recentlyClosedStatusMessage }}
-        </div>
+        <h2>快捷访问</h2>
+        <CollapsibleSection title="常用网站">
+          <div v-if="topSites.length > 0" class="grid-list">
+            <a v-for="site in topSites" :key="site.url" :href="site.url" :title="site.title">
+              {{ site.title }}
+            </a>
+          </div>
+          <div v-else class="status-message">
+            {{ topSitesStatusMessage }}
+          </div>
+        </CollapsibleSection>
+        <CollapsibleSection title="最近关闭">
+          <div v-if="recentlyClosedTabs.length > 0" class="grid-list">
+            <a v-for="tab in recentlyClosedTabs" :key="tab.sessionId" :href="tab.url" :title="tab.title" @click.prevent="restoreTab(tab.sessionId)">
+              {{ tab.title }}
+            </a>
+          </div>
+          <div v-else class="status-message">
+            {{ recentlyClosedStatusMessage }}
+          </div>
+        </CollapsibleSection>
       </section>
     </div>
     <!-- 右侧栏 -->
@@ -53,6 +52,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import BookmarkNode from '../components/BookmarkNode.vue'
+import CollapsibleSection from '../components/CollapsibleSection.vue' // 导入新组件
 
 // --- 状态定义 ---
 const topSites = ref<chrome.topSites.MostVisitedURL[]>([]);
@@ -84,11 +84,11 @@ async function loadTopSites() {
 
 async function loadRecentlyClosedTabs() {
   try {
-    const sessions = await chrome.sessions.getRecentlyClosed({ maxResults: 25 }); // 获取更多条目以备过滤
+    const sessions = await chrome.sessions.getRecentlyClosed({ maxResults: 25 });
     const tabs = sessions
-      .filter(session => session.tab && !session.window) // 过滤出单个标签页
+      .filter(session => session.tab && !session.window)
       .map(session => session.tab as chrome.tabs.Tab)
-      .filter(tab => tab.title && tab.url); // 【关键改动】只保留同时具有标题和 URL 的标签页
+      .filter(tab => tab.title && tab.url);
     
     recentlyClosedTabs.value = tabs;
     if (tabs.length === 0) recentlyClosedStatusMessage.value = '暂无最近关闭的标签页。';
