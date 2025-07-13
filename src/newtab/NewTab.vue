@@ -14,7 +14,8 @@
     </section>
     <!-- 书签 -->
     <section class="card">
-      <h2>{{ bookmarkFolderName }}</h2>
+      <h2 v-if="bookmarkRoot">{{ bookmarkRoot.title }}</h2>
+      <h2 v-else>书签</h2>
       <div v-if="bookmarkRoot" class="bookmark-list">
         <ul>
           <BookmarkNode
@@ -40,8 +41,6 @@ const topSites = ref<chrome.topSites.MostVisitedURL[]>([]);
 const topSitesStatusMessage = ref('正在加载常用网站...');
 
 // --- 书签状态 ---
-// 在这里修改为你想要展示的书签文件夹名称
-const bookmarkFolderName = 'Bookmarks bar';
 const bookmarkRoot = ref<chrome.bookmarks.BookmarkTreeNode | null>(null);
 const bookmarkStatusMessage = ref('正在加载书签...');
 
@@ -58,51 +57,36 @@ onMounted(async () => {
     console.error(topSitesStatusMessage.value, e);
   }
 
-  // 2. 获取书签
-  try {
-    const bookmarkTree = await getBookmarksTree();
-    const targetFolder = findFolder(bookmarkTree, bookmarkFolderName);
+  // 2. 获取用户选择的书签文件夹
+  loadSelectedBookmarkFolder();
+});
 
-    if (targetFolder) {
-      bookmarkRoot.value = targetFolder;
+async function loadSelectedBookmarkFolder() {
+  try {
+    const data = await chrome.storage.local.get('selectedBookmarkFolderId');
+    const folderId = data.selectedBookmarkFolderId;
+
+    if (folderId) {
+      const bookmarkTree = await chrome.bookmarks.getSubTree(folderId);
+      if (bookmarkTree && bookmarkTree.length > 0) {
+        bookmarkRoot.value = bookmarkTree[0];
+      } else {
+        bookmarkStatusMessage.value = '无法找到所选文件夹，请在弹出窗口中重新选择。';
+      }
     } else {
-      bookmarkStatusMessage.value = `错误: 未找到名为 "${bookmarkFolderName}" 的书签文件夹。`;
+      bookmarkStatusMessage.value = '请点击浏览器右上角的扩展图标，在弹出窗口中选择要显示的书签文件夹。';
     }
   } catch(e) {
     bookmarkStatusMessage.value = '加载书签时出错。';
     console.error(bookmarkStatusMessage.value, e);
   }
-})
+}
 
 // 封装成 Promise 更易用
 function getTopSites(): Promise<chrome.topSites.MostVisitedURL[]> {
   return new Promise((resolve) => {
     chrome.topSites.get(resolve);
   });
-}
-
-function getBookmarksTree(): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
-  return new Promise((resolve) => {
-    chrome.bookmarks.getTree(resolve);
-  });
-}
-
-/**
- * 在书签树中递归查找指定名称的文件夹
- */
-function findFolder(nodes: chrome.bookmarks.BookmarkTreeNode[], name: string): chrome.bookmarks.BookmarkTreeNode | null {
-  for (const node of nodes) {
-    // 如果是文件夹且名称匹配 (忽略大小写)
-    if (node.children && node.title.toLowerCase() === name.toLowerCase()) {
-      return node;
-    }
-    // 如果当前节点是文件夹，则递归到其子节点中查找
-    if (node.children) {
-      const found = findFolder(node.children, name);
-      if (found) return found;
-    }
-  }
-  return null;
 }
 </script>
 
@@ -166,6 +150,7 @@ h2 {
 
 .status-message {
   background-color: transparent;
+  line-height: 1.5;
 }
 
 .error {
