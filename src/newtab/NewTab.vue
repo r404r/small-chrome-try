@@ -3,8 +3,8 @@
     <!-- 左侧栏 -->
     <div class="column">
       <section class="card">
-        <h2>快捷访问</h2>
-        <CollapsibleSection title="常用网站">
+        <h2>Quick Link</h2>
+        <CollapsibleSection title="Top Sites">
           <div v-if="topSites.length > 0" class="grid-list">
             <a v-for="site in topSites" :key="site.url" :href="site.url" :title="site.title">
               {{ site.title }}
@@ -14,7 +14,7 @@
             {{ topSitesStatusMessage }}
           </div>
         </CollapsibleSection>
-        <CollapsibleSection title="最近关闭">
+        <CollapsibleSection title="Recently Closed Tabs">
           <div v-if="recentlyClosedTabs.length > 0" class="grid-list">
             <a v-for="tab in recentlyClosedTabs" :key="tab.sessionId" :href="tab.url" :title="tab.title" @click.prevent="restoreTab(tab.sessionId)">
               {{ tab.title }}
@@ -56,13 +56,13 @@ import CollapsibleSection from '../components/CollapsibleSection.vue' // 导入�
 
 // --- 状态定义 ---
 const topSites = ref<chrome.topSites.MostVisitedURL[]>([]);
-const topSitesStatusMessage = ref('正在加载...');
+const topSitesStatusMessage = ref('Loading...');
 
 const recentlyClosedTabs = ref<{title?: string; url?: string; sessionId?: string}[]>([]);
-const recentlyClosedStatusMessage = ref('正在加载...');
+const recentlyClosedStatusMessage = ref('Loading...');
 
 const bookmarkRoot = ref<chrome.bookmarks.BookmarkTreeNode | null>(null);
-const bookmarkStatusMessage = ref('正在加载...');
+const bookmarkStatusMessage = ref('Loading...');
 
 // --- 生命周期钩子 ---
 onMounted(async () => {
