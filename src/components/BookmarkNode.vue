@@ -50,12 +50,12 @@ a {
   display: block;
   padding: 5px 8px;
   border-radius: 4px;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.4);
   transition: background-color 0.2s;
 }
 
 a:hover {
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.6);
 }
 
 .folder {

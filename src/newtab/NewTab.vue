@@ -146,7 +146,7 @@ h2 {
   display: block;
   padding: 10px;
   border-radius: 6px;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.4);
   margin-bottom: 8px;
   transition: background-color 0.2s, transform 0.2s;
   white-space: nowrap;
@@ -155,7 +155,7 @@ h2 {
 }
 
 .grid-list a:hover {
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.6);
   transform: translateY(-2px);
 }
 
