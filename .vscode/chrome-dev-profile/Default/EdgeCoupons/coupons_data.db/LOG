@@ -1,5 +1,0 @@
-2025/07/13-13:51:31.191 5c30 Creating DB E:\work\gitwork\github.com\ding\chrome-try\small-chrome-try\.vscode\chrome-dev-profile\Default\EdgeCoupons/coupons_data.db since it was missing.
-2025/07/13-13:51:31.204 5c30 Reusing MANIFEST E:\work\gitwork\github.com\ding\chrome-try\small-chrome-try\.vscode\chrome-dev-profile\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
-2025/07/13-13:51:31.551 9864 Level-0 table #5: started
-2025/07/13-13:51:31.554 9864 Level-0 table #5: 671909 bytes OK
-2025/07/13-13:51:31.556 9864 Delete type=0 #3
