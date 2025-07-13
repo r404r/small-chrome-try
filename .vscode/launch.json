@@ -1,30 +1,26 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-
-        {
-            "type": "msedge",
-            "request": "launch",
-            "name": "Launch Edge against localhost",
-            // userDataDir 告诉 VS Code 启动一个全新的、干净的 Chrome 实例
-            // 这可以避免与你日常使用的 Chrome 实例、插件和登录状态产生冲突
-            // 强烈建议使用此配置！
-            "userDataDir": "${workspaceFolder}/.vscode/chrome-dev-profile",
-            // webRoot 指向你的源代码的根目录。
-            // 对于 Vue/Vite 项目，通常是整个工作区或构建后的 dist 目录。
-            // 如果源代码和构建后代码的路径映射有问题，可以调整此项。
-            "webRoot": "${workspaceFolder}",
-            // 如果你的项目有构建步骤（比如你的Vue项目），sourceMaps 很重要。
-            // 它能将浏览器中运行的编译后代码映射回你的 TypeScript/Vue 源码。
-            "sourceMaps": true,
-            "sourceMapPathOverrides": {
-                 "webpack:///src/*": "${webRoot}/src/*"
-            },
-            "url": "http://localhost:8080",
-            // "webRoot": "${workspaceFolder}"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "pwa-chrome",
+      "request": "launch",
+      "name": "Debug Chrome Extension (Vite)",
+      "comment": "首先在终端运行 'pnpm run dev'，然后再启动此调试配置",
+      // runtimeArgs 会告诉 Chrome 启动时加载我们的扩展
+      "runtimeArgs": [
+        "--load-extension=${workspaceFolder}/build"
+      ],
+      // userDataDir 会启动一个干净的浏览器实例，避免与现有配置冲突
+      "userDataDir": "${workspaceFolder}/.vscode/chrome-dev-profile",
+      // 启动后打开新标签页，方便我们立即看到效果
+      "url": "chrome://newtab",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      // 为 Vite 配置源映射路径
+      "sourceMapPathOverrides": {
+        "/@fs/*": "${workspaceFolder}/*",
+        "/src/*": "${workspaceFolder}/src/*"
+      }
+    }
+  ]
 }
