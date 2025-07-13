@@ -1,34 +1,52 @@
 <template>
   <main class="container">
-    <!-- 常用网站 -->
-    <section class="card">
-      <h2>常用网站</h2>
-      <div v-if="topSites.length > 0" class="grid-list">
-        <a v-for="site in topSites" :key="site.url" :href="site.url" :title="site.title">
-          {{ site.title }}
-        </a>
-      </div>
-      <div v-else class="status-message">
-        {{ topSitesStatusMessage }}
-      </div>
-    </section>
-    <!-- 书签 -->
-    <section class="card">
-      <h2 v-if="bookmarkRoot">{{ bookmarkRoot.title }}</h2>
-      <h2 v-else>书签</h2>
-      <div v-if="bookmarkRoot" class="bookmark-list">
-        <ul>
-          <BookmarkNode
-            v-for="node in bookmarkRoot.children"
-            :key="node.id"
-            :node="node"
-          />
-        </ul>
-      </div>
-      <div v-else class="status-message">
-        {{ bookmarkStatusMessage }}
-      </div>
-    </section>
+    <!-- 左侧栏 -->
+    <div class="column">
+      <!-- 常用网站 -->
+      <section class="card">
+        <h2>常用网站</h2>
+        <div v-if="topSites.length > 0" class="grid-list">
+          <a v-for="site in topSites" :key="site.url" :href="site.url" :title="site.title">
+            {{ site.title }}
+          </a>
+        </div>
+        <div v-else class="status-message">
+          {{ topSitesStatusMessage }}
+        </div>
+      </section>
+      <!-- 最近关闭 -->
+      <section class="card">
+        <h2>最近关闭</h2>
+        <div v-if="recentlyClosedTabs.length > 0" class="grid-list">
+          <a v-for="tab in recentlyClosedTabs" :key="tab.sessionId" :href="tab.url" :title="tab.title" @click.prevent="restoreTab(tab.sessionId)">
+            {{ tab.title }}
+          </a>
+        </div>
+        <div v-else class="status-message">
+          {{ recentlyClosedStatusMessage }}
+        </div>
+      </section>
+    </div>
+    <!-- 右侧栏 -->
+    <div class="column">
+      <!-- 书签 -->
+      <section class="card">
+        <h2 v-if="bookmarkRoot">{{ bookmarkRoot.title }}</h2>
+        <h2 v-else>书签</h2>
+        <div v-if="bookmarkRoot" class="bookmark-list">
+          <ul>
+            <BookmarkNode
+              v-for="node in bookmarkRoot.children"
+              :key="node.id"
+              :node="node"
+            />
+          </ul>
+        </div>
+        <div v-else class="status-message">
+          {{ bookmarkStatusMessage }}
+        </div>
+      </section>
+    </div>
   </main>
 </template>
 
@@ -36,71 +54,81 @@
 import { ref, onMounted } from 'vue'
 import BookmarkNode from '../components/BookmarkNode.vue'
 
-// --- 常用网站状态 ---
+// --- 状态定义 ---
 const topSites = ref<chrome.topSites.MostVisitedURL[]>([]);
-const topSitesStatusMessage = ref('正在加载常用网站...');
+const topSitesStatusMessage = ref('正在加载...');
 
-// --- 书签状态 ---
+const recentlyClosedTabs = ref<{title?: string; url?: string; sessionId?: string}[]>([]);
+const recentlyClosedStatusMessage = ref('正在加载...');
+
 const bookmarkRoot = ref<chrome.bookmarks.BookmarkTreeNode | null>(null);
-const bookmarkStatusMessage = ref('正在加载书签...');
+const bookmarkStatusMessage = ref('正在加载...');
 
-// 在组件加载完成后，调用 API 获取数据
+// --- 生命周期钩子 ---
 onMounted(async () => {
-  // 1. 获取常用网站
-  try {
-    topSites.value = await getTopSites();
-    if (topSites.value.length === 0) {
-      topSitesStatusMessage.value = '暂无常用网站。';
-    }
-  } catch (e) {
-    topSitesStatusMessage.value = '加载常用网站时出错。';
-    console.error(topSitesStatusMessage.value, e);
-  }
-
-  // 2. 获取用户选择的书签文件夹，如果未选择则回退到默认值
+  loadTopSites();
+  loadRecentlyClosedTabs();
   loadSelectedBookmarkFolder();
 });
+
+// --- 数据加载函数 ---
+async function loadTopSites() {
+  try {
+    topSites.value = await chrome.topSites.get();
+    if (topSites.value.length === 0) topSitesStatusMessage.value = '暂无常用网站。';
+  } catch (e) {
+    topSitesStatusMessage.value = '加载常用网站出错。';
+    console.error(e);
+  }
+}
+
+async function loadRecentlyClosedTabs() {
+  try {
+    const sessions = await chrome.sessions.getRecentlyClosed({ maxResults: 15 });
+    const tabs = sessions
+      .filter(session => session.tab && !session.window) // 只过滤出单个标签页的会话
+      .map(session => session.tab as chrome.tabs.Tab);
+    
+    recentlyClosedTabs.value = tabs;
+    if (tabs.length === 0) recentlyClosedStatusMessage.value = '暂无最近关闭的标签页。';
+
+  } catch (e) {
+    recentlyClosedStatusMessage.value = '加载最近关闭的标签页出错。';
+    console.error(e);
+  }
+}
 
 async function loadSelectedBookmarkFolder() {
   try {
     const data = await chrome.storage.local.get('selectedBookmarkFolderId');
     let folderId = data.selectedBookmarkFolderId;
 
-    // 如果没有已保存的 ID，则查找默认文件夹
     if (!folderId) {
       const bookmarkTree = await chrome.bookmarks.getTree();
       const defaultFolder = findFolderByName(bookmarkTree, 'Bookmarks bar');
-      if (defaultFolder) {
-        folderId = defaultFolder.id;
-      }
+      if (defaultFolder) folderId = defaultFolder.id;
     }
 
     if (folderId) {
-      const bookmarkTree = await chrome.bookmarks.getSubTree(folderId);
-      if (bookmarkTree && bookmarkTree.length > 0) {
-        bookmarkRoot.value = bookmarkTree[0];
+      const [bookmarkTree] = await chrome.bookmarks.getSubTree(folderId);
+      if (bookmarkTree) {
+        bookmarkRoot.value = bookmarkTree;
       } else {
-        bookmarkStatusMessage.value = '无法找到所选文件夹，请在弹出窗口中重新选择。';
+        bookmarkStatusMessage.value = '无法找到所选文件夹。';
       }
     } else {
-      bookmarkStatusMessage.value = '请点击浏览器右上角的扩展图标，在弹出窗口中选择要显示的书签文件夹。';
+      bookmarkStatusMessage.value = '请在扩展弹出窗口中选择一个书签文件夹。';
     }
   } catch(e) {
-    bookmarkStatusMessage.value = '加载书签时出错。';
-    console.error(bookmarkStatusMessage.value, e);
+    bookmarkStatusMessage.value = '加载书签出错。';
+    console.error(e);
   }
 }
 
-/**
- * 在书签树中递归查找指定名称的文件夹
- */
+// --- 辅助函数 ---
 function findFolderByName(nodes: chrome.bookmarks.BookmarkTreeNode[], name: string): chrome.bookmarks.BookmarkTreeNode | null {
   for (const node of nodes) {
-    // 如果是文件夹且名称匹配 (忽略大小写)
-    if (node.children && node.title.toLowerCase() === name.toLowerCase()) {
-      return node;
-    }
-    // 如果当前节点是文件夹，则递归到其子节点中查找
+    if (node.children && node.title.toLowerCase() === name.toLowerCase()) return node;
     if (node.children) {
       const found = findFolderByName(node.children, name);
       if (found) return found;
@@ -109,16 +137,14 @@ function findFolderByName(nodes: chrome.bookmarks.BookmarkTreeNode[], name: stri
   return null;
 }
 
-// 封装成 Promise 更易用
-function getTopSites(): Promise<chrome.topSites.MostVisitedURL[]> {
-  return new Promise((resolve) => {
-    chrome.topSites.get(resolve);
-  });
+function restoreTab(sessionId?: string) {
+  if (sessionId) {
+    chrome.sessions.restore(sessionId);
+  }
 }
 </script>
 
 <style scoped>
-/* 建议将全局样式（如字体、背景）移至全局 CSS 文件 */
 .container {
   display: flex;
   gap: 2rem;
@@ -126,18 +152,23 @@ function getTopSites(): Promise<chrome.topSites.MostVisitedURL[]> {
   width: 100%;
   box-sizing: border-box;
   min-height: 100vh;
+  align-items: flex-start;
+}
+
+.column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .card {
-  flex: 1;
-  /* 优化毛玻璃效果：降低模糊度，提高背景和边框的不透明度以增强清晰度 */
   background-color: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(8px);
   padding: 1.5rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.25);
-  align-self: flex-start;
   color: white;
 }
 
@@ -146,7 +177,6 @@ h2 {
   margin-top: 0;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  /* 增强文本阴影以提高在任何背景下的可读性 */
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
 }
 
@@ -164,6 +194,7 @@ h2 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
 }
 
 .grid-list a:hover {
@@ -179,9 +210,6 @@ h2 {
 .status-message {
   background-color: transparent;
   line-height: 1.5;
-}
-
-.error {
-  color: #ff8a80; /* 更柔和的红色 */
+  cursor: default;
 }
 </style>
