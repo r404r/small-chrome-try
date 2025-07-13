@@ -57,14 +57,23 @@ onMounted(async () => {
     console.error(topSitesStatusMessage.value, e);
   }
 
-  // 2. 获取用户选择的书签文件夹
+  // 2. 获取用户选择的书签文件夹，如果未选择则回退到默认值
   loadSelectedBookmarkFolder();
 });
 
 async function loadSelectedBookmarkFolder() {
   try {
     const data = await chrome.storage.local.get('selectedBookmarkFolderId');
-    const folderId = data.selectedBookmarkFolderId;
+    let folderId = data.selectedBookmarkFolderId;
+
+    // 如果没有已保存的 ID，则查找默认文件夹
+    if (!folderId) {
+      const bookmarkTree = await chrome.bookmarks.getTree();
+      const defaultFolder = findFolderByName(bookmarkTree, 'Bookmarks bar');
+      if (defaultFolder) {
+        folderId = defaultFolder.id;
+      }
+    }
 
     if (folderId) {
       const bookmarkTree = await chrome.bookmarks.getSubTree(folderId);
@@ -80,6 +89,24 @@ async function loadSelectedBookmarkFolder() {
     bookmarkStatusMessage.value = '加载书签时出错。';
     console.error(bookmarkStatusMessage.value, e);
   }
+}
+
+/**
+ * 在书签树中递归查找指定名称的文件夹
+ */
+function findFolderByName(nodes: chrome.bookmarks.BookmarkTreeNode[], name: string): chrome.bookmarks.BookmarkTreeNode | null {
+  for (const node of nodes) {
+    // 如果是文件夹且名称匹配 (忽略大小写)
+    if (node.children && node.title.toLowerCase() === name.toLowerCase()) {
+      return node;
+    }
+    // 如果当前节点是文件夹，则递归到其子节点中查找
+    if (node.children) {
+      const found = findFolderByName(node.children, name);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 // 封装成 Promise 更易用
