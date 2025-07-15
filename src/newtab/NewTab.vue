@@ -205,7 +205,8 @@ function findFolderByName(nodes: chrome.bookmarks.BookmarkTreeNode[], name: stri
 .container {
   display: flex;
   gap: 2rem;
-  padding: 2rem;
+  padding: 1rem 2rem;
+  /* 减少顶部和底部的内边距，保持左右内边距 */
   width: 100%;
   box-sizing: border-box;
   min-height: 100vh;
