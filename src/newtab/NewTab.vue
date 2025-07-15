@@ -106,20 +106,37 @@ async function loadTopSites() {
  */
 async function loadRecentHistory() {
   try {
-    // 获取最近访问的10个网站
+    // 获取更多的历史记录，以便去重后仍有足够的数据
     const historyItems = await chrome.history.search({
       text: '',
-      maxResults: 10,
+      maxResults: 50, // 增加获取数量，为去重留出空间
       startTime: Date.now() - 7 * 24 * 60 * 60 * 1000 // 最近7天
     });
 
     // 过滤掉没有标题或URL的项目，并排除当前新标签页
     const filteredItems = historyItems
-      .filter(item => item.title && item.url && !item.url.includes('chrome://') && !item.url.includes('chrome-extension://'))
-      .slice(0, 10); // 确保只取前10个
+      .filter(item => item.title && item.url && !item.url.includes('chrome://') && !item.url.includes('chrome-extension://'));
 
-    recentHistory.value = filteredItems;
-    if (filteredItems.length === 0) recentHistoryStatusMessage.value = '暂无最近访问记录。';
+    // 使用 Map 来去重，保留每个标题的最新记录（最大的 lastVisitTime）
+    const uniqueItemsMap = new Map<string, chrome.history.HistoryItem>();
+
+    filteredItems.forEach(item => {
+      const title = item.title!;
+      const existingItem = uniqueItemsMap.get(title);
+
+      // 如果没有相同标题的记录，或者当前记录更新，则保存当前记录
+      if (!existingItem || (item.lastVisitTime && existingItem.lastVisitTime && item.lastVisitTime > existingItem.lastVisitTime)) {
+        uniqueItemsMap.set(title, item);
+      }
+    });
+
+    // 将去重后的结果转换为数组，按访问时间排序，取前10个
+    const uniqueItems = Array.from(uniqueItemsMap.values())
+      .sort((a, b) => (b.lastVisitTime || 0) - (a.lastVisitTime || 0))
+      .slice(0, 10);
+
+    recentHistory.value = uniqueItems;
+    if (uniqueItems.length === 0) recentHistoryStatusMessage.value = '暂无最近访问记录。';
   } catch (e) {
     recentHistoryStatusMessage.value = '加载最近访问记录出错。';
     console.error('Error loading recent history:', e);
