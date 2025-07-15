@@ -119,12 +119,12 @@ async function loadRecentlyClosedTabs() {
         console.log('Session has tab:', hasTab, session); // 调试日志
         return hasTab;
       })
-      .map(session => ({
+      .map((session, index) => ({
         title: session.tab!.title,
         url: session.tab!.url,
-        sessionId: session.tab!.sessionId || session.sessionId // 优先使用 tab 的 sessionId，否则使用 session 的
+        sessionId: session.tab!.sessionId || `session_${index}` // 使用 tab 的 sessionId，如果没有则生成一个唯一标识
       }))
-      .filter(tab => tab.title && tab.url && tab.sessionId); // 确保所有必要字段都存在
+      .filter(tab => tab.title && tab.url); // 只需要确保 title 和 url 存在
 
     console.log('Filtered tabs:', tabs); // 调试日志
     recentlyClosedTabs.value = tabs;
@@ -197,7 +197,8 @@ function findFolderByName(nodes: chrome.bookmarks.BookmarkTreeNode[], name: stri
  * @param sessionId 要恢复的会话的 ID
  */
 function restoreTab(sessionId?: string) {
-  if (sessionId) {
+  if (sessionId && !sessionId.startsWith('session_')) {
+    // 只有真正的 sessionId 才能恢复，跳过我们生成的占位符 ID
     chrome.sessions.restore(sessionId);
   }
 }
