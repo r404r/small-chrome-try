@@ -1,16 +1,16 @@
 {
   "name": "small-chrome-try",
   "displayName": "small-chrome-try",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Thomas.D",
   "description": "My new tab page",
   "type": "module",
   "license": "MIT",
   "keywords": [
     "chrome-extension",
-    "vue",
-    "vite",
-    "create-chrome-ext"
+    "Top Sites",
+    "Bookmark",
+    "New Tab"
   ],
   "engines": {
     "node": ">=14.18.0"
