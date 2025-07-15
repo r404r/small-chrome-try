@@ -3,10 +3,10 @@
   <main class="container">
     <!-- 左侧栏 -->
     <div class="column">
-      <!-- “快捷访问”卡片，包含了两个可折叠区域 -->
+      <!-- "快捷访问"卡片，包含了两个可折叠区域 -->
       <section class="card">
         <h2>快捷访问</h2>
-        <!-- “常用网站”折叠区 -->
+        <!-- "常用网站"折叠区 -->
         <CollapsibleSection title="常用网站">
           <!-- v-if / v-else 用于条件渲染：当有数据时显示列表，否则显示状态消息 -->
           <div v-if="topSites.length > 0" class="grid-list">
@@ -19,26 +19,24 @@
             {{ topSitesStatusMessage }}
           </div>
         </CollapsibleSection>
-        <!-- “最近关闭”折叠区 -->
-        <CollapsibleSection title="最近关闭">
-          <div v-if="recentlyClosedTabs.length > 0" class="grid-list">
-            <!-- @click.prevent 会阻止链接的默认跳转行为，改为调用我们自己的 restoreTab 函数 -->
-            <a v-for="tab in recentlyClosedTabs" :key="tab.sessionId" :href="tab.url" :title="tab.title"
-              @click.prevent="restoreTab(tab.sessionId)">
-              {{ tab.title }}
+        <!-- "最近访问"折叠区 -->
+        <CollapsibleSection title="最近访问">
+          <div v-if="recentHistory.length > 0" class="grid-list">
+            <a v-for="item in recentHistory" :key="item.id" :href="item.url" :title="item.title">
+              {{ item.title }}
             </a>
           </div>
           <div v-else class="status-message">
-            {{ recentlyClosedStatusMessage }}
+            {{ recentHistoryStatusMessage }}
           </div>
         </CollapsibleSection>
       </section>
     </div>
     <!-- 右侧栏 -->
     <div class="column">
-      <!-- “书签”卡片 -->
+      <!-- "书签"卡片 -->
       <section class="card">
-        <!-- 动态标题：如果加载了书签文件夹，标题就是文件夹名，否则默认为“书签” -->
+        <!-- 动态标题：如果加载了书签文件夹，标题就是文件夹名，否则默认为"书签" -->
         <h2 v-if="bookmarkRoot">{{ bookmarkRoot.title }}</h2>
         <h2 v-else>书签</h2>
         <div v-if="bookmarkRoot" class="bookmark-list">
@@ -65,14 +63,14 @@ import CollapsibleSection from '../components/CollapsibleSection.vue'
 // --- 响应式状态定义 ---
 // 使用 ref() 创建响应式变量。当这些变量的值改变时，Vue 会自动更新模板中用到它们的部分。
 
-// 存储“常用网站”列表
+// 存储"常用网站"列表
 const topSites = ref<chrome.topSites.MostVisitedURL[]>([]);
-// “常用网站”区域的状态消息（如“加载中...”、“暂无...”）
+// "常用网站"区域的状态消息（如"加载中..."、"暂无..."）
 const topSitesStatusMessage = ref('加载中...');
 
-// 存储“最近关闭”的标签页列表
-const recentlyClosedTabs = ref<{ title?: string; url?: string; sessionId?: string }[]>([]);
-const recentlyClosedStatusMessage = ref('加载中...');
+// 存储"最近访问"的历史记录列表
+const recentHistory = ref<chrome.history.HistoryItem[]>([]);
+const recentHistoryStatusMessage = ref('加载中...');
 
 // 存储当前要展示的书签文件夹的根节点
 const bookmarkRoot = ref<chrome.bookmarks.BookmarkTreeNode | null>(null);
@@ -84,7 +82,7 @@ const bookmarkStatusMessage = ref('加载中...');
 onMounted(async () => {
   // 并行发起所有数据加载请求
   loadTopSites();
-  loadRecentlyClosedTabs();
+  loadRecentHistory();
   loadSelectedBookmarkFolder();
 });
 
@@ -104,35 +102,27 @@ async function loadTopSites() {
 }
 
 /**
- * @description 调用 chrome.sessions API 获取最近关闭的标签页
+ * @description 调用 chrome.history API 获取最近访问的网站
  */
-async function loadRecentlyClosedTabs() {
+async function loadRecentHistory() {
   try {
-    // 获取最近的会话，为了过滤，我们请求稍多一些
-    const sessions = await chrome.sessions.getRecentlyClosed({ maxResults: 25 });
-    console.log('Raw sessions:', sessions); // 调试日志
+    // 获取最近访问的10个网站
+    const historyItems = await chrome.history.search({
+      text: '',
+      maxResults: 10,
+      startTime: Date.now() - 7 * 24 * 60 * 60 * 1000 // 最近7天
+    });
 
-    const tabs = sessions
-      .filter(session => {
-        // 修改过滤逻辑：保留有 tab 属性的会话，不管是否有 window
-        const hasTab = session.tab !== undefined;
-        console.log('Session has tab:', hasTab, session); // 调试日志
-        return hasTab;
-      })
-      .map((session, index) => ({
-        title: session.tab!.title,
-        url: session.tab!.url,
-        sessionId: session.tab!.sessionId || `session_${index}` // 使用 tab 的 sessionId，如果没有则生成一个唯一标识
-      }))
-      .filter(tab => tab.title && tab.url); // 只需要确保 title 和 url 存在
+    // 过滤掉没有标题或URL的项目，并排除当前新标签页
+    const filteredItems = historyItems
+      .filter(item => item.title && item.url && !item.url.includes('chrome://') && !item.url.includes('chrome-extension://'))
+      .slice(0, 10); // 确保只取前10个
 
-    console.log('Filtered tabs:', tabs); // 调试日志
-    recentlyClosedTabs.value = tabs;
-    if (tabs.length === 0) recentlyClosedStatusMessage.value = '暂无最近关闭的标签页。';
-
+    recentHistory.value = filteredItems;
+    if (filteredItems.length === 0) recentHistoryStatusMessage.value = '暂无最近访问记录。';
   } catch (e) {
-    recentlyClosedStatusMessage.value = '加载最近关闭的标签页出错。';
-    console.error('Error loading recently closed tabs:', e);
+    recentHistoryStatusMessage.value = '加载最近访问记录出错。';
+    console.error('Error loading recent history:', e);
   }
 }
 
@@ -190,17 +180,6 @@ function findFolderByName(nodes: chrome.bookmarks.BookmarkTreeNode[], name: stri
     }
   }
   return null; // 遍历完所有节点都没找到，返回 null
-}
-
-/**
- * @description 调用 chrome.sessions API 恢复指定的标签页
- * @param sessionId 要恢复的会话的 ID
- */
-function restoreTab(sessionId?: string) {
-  if (sessionId && !sessionId.startsWith('session_')) {
-    // 只有真正的 sessionId 才能恢复，跳过我们生成的占位符 ID
-    chrome.sessions.restore(sessionId);
-  }
 }
 </script>
 
