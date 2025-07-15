@@ -214,8 +214,11 @@ function findFolderByName(nodes: chrome.bookmarks.BookmarkTreeNode[], name: stri
 }
 
 .column {
-  flex: 1;
-  /* 每列占据一半空间 */
+  flex: 1 1 50%;
+  /* 固定每列占据50%空间，不允许伸缩 */
+  max-width: 50%;
+  min-width: 0;
+  /* 允许内容收缩 */
   display: flex;
   flex-direction: column;
   gap: 2rem;
