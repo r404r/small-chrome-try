@@ -23,7 +23,8 @@
         <CollapsibleSection title="最近关闭">
           <div v-if="recentlyClosedTabs.length > 0" class="grid-list">
             <!-- @click.prevent 会阻止链接的默认跳转行为，改为调用我们自己的 restoreTab 函数 -->
-            <a v-for="tab in recentlyClosedTabs" :key="tab.sessionId" :href="tab.url" :title="tab.title" @click.prevent="restoreTab(tab.sessionId)">
+            <a v-for="tab in recentlyClosedTabs" :key="tab.sessionId" :href="tab.url" :title="tab.title"
+              @click.prevent="restoreTab(tab.sessionId)">
               {{ tab.title }}
             </a>
           </div>
@@ -43,11 +44,7 @@
         <div v-if="bookmarkRoot" class="bookmark-list">
           <!-- 递归组件 BookmarkNode 用于展示树状的书签结构 -->
           <ul>
-            <BookmarkNode
-              v-for="node in bookmarkRoot.children"
-              :key="node.id"
-              :node="node"
-            />
+            <BookmarkNode v-for="node in bookmarkRoot.children" :key="node.id" :node="node" />
           </ul>
         </div>
         <div v-else class="status-message">
@@ -74,7 +71,7 @@ const topSites = ref<chrome.topSites.MostVisitedURL[]>([]);
 const topSitesStatusMessage = ref('加载中...');
 
 // 存储“最近关闭”的标签页列表
-const recentlyClosedTabs = ref<{title?: string; url?: string; sessionId?: string}[]>([]);
+const recentlyClosedTabs = ref<{ title?: string; url?: string; sessionId?: string }[]>([]);
 const recentlyClosedStatusMessage = ref('加载中...');
 
 // 存储当前要展示的书签文件夹的根节点
@@ -113,17 +110,29 @@ async function loadRecentlyClosedTabs() {
   try {
     // 获取最近的会话，为了过滤，我们请求稍多一些
     const sessions = await chrome.sessions.getRecentlyClosed({ maxResults: 25 });
+    console.log('Raw sessions:', sessions); // 调试日志
+
     const tabs = sessions
-      .filter(session => session.tab && !session.window) // 只保留单个标签页的会话（排除整个窗口的会话）
-      .map(session => session.tab as chrome.tabs.Tab)   // 提取出 tab 对象
-      .filter(tab => tab.title && tab.url);              // 只保留有标题和 URL 的有效标签页
-    
+      .filter(session => {
+        // 修改过滤逻辑：保留有 tab 属性的会话，不管是否有 window
+        const hasTab = session.tab !== undefined;
+        console.log('Session has tab:', hasTab, session); // 调试日志
+        return hasTab;
+      })
+      .map(session => ({
+        title: session.tab!.title,
+        url: session.tab!.url,
+        sessionId: session.tab!.sessionId || session.sessionId // 优先使用 tab 的 sessionId，否则使用 session 的
+      }))
+      .filter(tab => tab.title && tab.url && tab.sessionId); // 确保所有必要字段都存在
+
+    console.log('Filtered tabs:', tabs); // 调试日志
     recentlyClosedTabs.value = tabs;
     if (tabs.length === 0) recentlyClosedStatusMessage.value = '暂无最近关闭的标签页。';
 
   } catch (e) {
     recentlyClosedStatusMessage.value = '加载最近关闭的标签页出错。';
-    console.error(e);
+    console.error('Error loading recently closed tabs:', e);
   }
 }
 
@@ -156,7 +165,7 @@ async function loadSelectedBookmarkFolder() {
       // 4. 如果连默认文件夹都找不到，则提示用户去设置
       bookmarkStatusMessage.value = '请在扩展弹出窗口中选择一个书签文件夹。';
     }
-  } catch(e) {
+  } catch (e) {
     bookmarkStatusMessage.value = '加载书签出错。';
     console.error(e);
   }
@@ -203,21 +212,24 @@ function restoreTab(sessionId?: string) {
   width: 100%;
   box-sizing: border-box;
   min-height: 100vh;
-  align-items: flex-start; /* 让列从顶部对齐 */
+  align-items: flex-start;
+  /* 让列从顶部对齐 */
 }
 
 .column {
-  flex: 1; /* 每列占据一半空间 */
+  flex: 1;
+  /* 每列占据一半空间 */
   display: flex;
   flex-direction: column;
-  gap: 2rem; /* 列内卡片之间的间距 */
+  gap: 2rem;
+  /* 列内卡片之间的间距 */
 }
 
 .card {
   /* 毛玻璃效果的关键样式 */
   background-color: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(8px);
-  
+
   padding: 1.5rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -233,7 +245,8 @@ h2 {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
 }
 
-.grid-list a, .status-message {
+.grid-list a,
+.status-message {
   font-size: 0.9rem;
   color: #fff;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
@@ -246,13 +259,15 @@ h2 {
   transition: background-color 0.2s, transform 0.2s;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis; /* 超出部分显示省略号 */
+  text-overflow: ellipsis;
+  /* 超出部分显示省略号 */
   cursor: pointer;
 }
 
 .grid-list a:hover {
   background-color: rgba(0, 0, 0, 0.6);
-  transform: translateY(-2px); /* 鼠标悬浮时轻微上移 */
+  transform: translateY(-2px);
+  /* 鼠标悬浮时轻微上移 */
 }
 
 .bookmark-list ul {
