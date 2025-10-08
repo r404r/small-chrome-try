@@ -62,6 +62,7 @@
       :bookmark="editingBookmark"
       @close="closeEditModal"
       @save="saveBookmark"
+      @delete="deleteBookmark"
     />
   </main>
 </template>
@@ -262,6 +263,28 @@ async function saveBookmark(bookmarkData: { id: string; title: string; url: stri
 }
 
 /**
+ * @description 删除书签
+ * @param bookmarkId 要删除的书签ID
+ */
+async function deleteBookmark(bookmarkId: string) {
+  try {
+    // 使用 Chrome 书签 API 删除书签
+    await chrome.bookmarks.remove(bookmarkId);
+
+    // 从本地状态中移除书签
+    removeBookmarkFromTree(bookmarkRoot.value, bookmarkId);
+
+    // 关闭模态框
+    closeEditModal();
+
+    console.log('书签删除成功');
+  } catch (error) {
+    console.error('删除书签失败:', error);
+    alert('删除书签失败，请重试。');
+  }
+}
+
+/**
  * @description 在书签树中递归更新指定书签的信息
  * @param node 当前节点
  * @param id 要更新的书签ID
@@ -289,6 +312,35 @@ function updateBookmarkInTree(
       if (updateBookmarkInTree(child, id, title, url)) {
         return true;
       }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * @description 在书签树中递归移除指定书签
+ * @param node 当前节点
+ * @param id 要移除的书签ID
+ */
+function removeBookmarkFromTree(
+  node: chrome.bookmarks.BookmarkTreeNode | null, 
+  id: string
+): boolean {
+  if (!node || !node.children) return false;
+
+  // 在当前节点的子节点中查找要删除的书签
+  const index = node.children.findIndex(child => child.id === id);
+  if (index !== -1) {
+    // 找到了，从数组中移除
+    node.children.splice(index, 1);
+    return true;
+  }
+
+  // 如果没找到，递归搜索子文件夹
+  for (const child of node.children) {
+    if (removeBookmarkFromTree(child, id)) {
+      return true;
     }
   }
 

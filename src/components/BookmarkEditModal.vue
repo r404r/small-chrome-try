@@ -39,12 +39,20 @@
           </div>
           
           <div class="form-actions">
-            <button type="button" class="btn btn-cancel" @click="closeModal">
-              取消
+            <button type="button" class="btn btn-delete" @click="showDeleteConfirm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+              </svg>
+              删除
             </button>
-            <button type="submit" class="btn btn-save" :disabled="!isFormValid">
-              保存
-            </button>
+            <div class="action-group">
+              <button type="button" class="btn btn-cancel" @click="closeModal">
+                取消
+              </button>
+              <button type="submit" class="btn btn-save" :disabled="!isFormValid">
+                保存
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -65,6 +73,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: [];
   save: [bookmark: { id: string; title: string; url: string }];
+  delete: [bookmarkId: string];
 }>();
 
 // 编辑表单数据
@@ -72,6 +81,9 @@ const editForm = ref({
   title: '',
   url: ''
 });
+
+// 删除确认状态
+const showDeleteConfirmDialog = ref(false);
 
 // 表单验证
 const isFormValid = computed(() => {
@@ -100,6 +112,16 @@ function saveBookmark() {
     title: editForm.value.title.trim(),
     url: editForm.value.url.trim()
   });
+}
+
+// 显示删除确认
+function showDeleteConfirm() {
+  if (!props.bookmark) return;
+  
+  const confirmed = confirm(`确定要删除书签 "${props.bookmark.title}" 吗？此操作无法撤销。`);
+  if (confirmed) {
+    emit('delete', props.bookmark.id);
+  }
 }
 </script>
 
@@ -201,8 +223,14 @@ function saveBookmark() {
 .form-actions {
   display: flex;
   gap: 1rem;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 2rem;
+}
+
+.action-group {
+  display: flex;
+  gap: 1rem;
 }
 
 .btn {
@@ -241,5 +269,23 @@ function saveBookmark() {
   background: #ccc;
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.btn-delete {
+  background: #e74c3c;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-delete:hover {
+  background: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+.btn-delete svg {
+  pointer-events: none;
 }
 </style>
