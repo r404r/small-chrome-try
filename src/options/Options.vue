@@ -28,8 +28,11 @@ onMounted(() => {
 </template>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@100;300;400;500;700;900&display=swap');
+
 :root {
   font-family:
+    'Noto Sans SC',
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
