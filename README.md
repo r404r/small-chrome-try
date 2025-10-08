@@ -82,7 +82,8 @@ I will structure my explanation as follows:
     *   `vite.config.ts` reads your app code and uses the rules from `tsconfig.json` (implicitly) to build it into the final extension that runs in the browser.
 
 This detailed explanation should be very helpful for a beginner. I will present this in a clear, structured way.
-好的，我已经获取了全部三个文件的内容。下面我将为您详细解释它们各自的作用以及它们之间的关系。
+
+下面我将为您详细解释它们各自的作用以及它们之间的关系。
 
 ---
 
