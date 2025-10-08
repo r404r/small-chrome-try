@@ -96,6 +96,10 @@ a {
   border-radius: 4px;
   background-color: rgba(0, 0, 0, 0.4);
   transition: background-color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-all;
 }
 
 a:hover {
@@ -111,6 +115,7 @@ a:hover {
   align-items: center;
   padding: 4px;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  min-width: 0;
 }
 
 .folder-icon {
@@ -118,6 +123,15 @@ a:hover {
   transition: transform 0.2s;
   font-size: 0.8em;
   margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.folder-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
 }
 
 /* 当文件夹展开时，小三角旋转90度 */

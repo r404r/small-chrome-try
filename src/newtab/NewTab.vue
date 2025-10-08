@@ -354,24 +354,21 @@ function removeBookmarkFromTree(
   display: flex;
   gap: 2rem;
   padding: 1rem 2rem;
-  /* 减少顶部和底部的内边距，保持左右内边距 */
-  width: 100%;
+  max-width: 100vw;
   box-sizing: border-box;
   min-height: 100vh;
   align-items: flex-start;
-  /* 让列从顶部对齐 */
+  overflow-x: hidden;
 }
 
 .column {
   flex: 1 1 50%;
-  /* 固定每列占据50%空间，不允许伸缩 */
-  max-width: 50%;
+  max-width: calc(50% - 1rem);
   min-width: 0;
-  /* 允许内容收缩 */
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  /* 列内卡片之间的间距 */
+  overflow: hidden;
 }
 
 .card {
