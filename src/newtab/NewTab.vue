@@ -42,7 +42,12 @@
         <div v-if="bookmarkRoot" class="bookmark-list">
           <!-- 递归组件 BookmarkNode 用于展示树状的书签结构 -->
           <ul>
-            <BookmarkNode v-for="node in bookmarkRoot.children" :key="node.id" :node="node" />
+            <BookmarkNode 
+              v-for="node in bookmarkRoot.children" 
+              :key="node.id" 
+              :node="node" 
+              @editBookmark="handleEditBookmark"
+            />
           </ul>
         </div>
         <div v-else class="status-message">
@@ -50,6 +55,14 @@
         </div>
       </section>
     </div>
+    
+    <!-- 编辑书签模态框 -->
+    <BookmarkEditModal
+      :isVisible="isEditModalVisible"
+      :bookmark="editingBookmark"
+      @close="closeEditModal"
+      @save="saveBookmark"
+    />
   </main>
 </template>
 
@@ -59,6 +72,7 @@ import { ref, onMounted } from 'vue'
 // 导入子组件
 import BookmarkNode from '../components/BookmarkNode.vue'
 import CollapsibleSection from '../components/CollapsibleSection.vue'
+import BookmarkEditModal from '../components/BookmarkEditModal.vue'
 
 // --- 响应式状态定义 ---
 // 使用 ref() 创建响应式变量。当这些变量的值改变时，Vue 会自动更新模板中用到它们的部分。
@@ -75,6 +89,10 @@ const recentHistoryStatusMessage = ref('加载中...');
 // 存储当前要展示的书签文件夹的根节点
 const bookmarkRoot = ref<chrome.bookmarks.BookmarkTreeNode | null>(null);
 const bookmarkStatusMessage = ref('加载中...');
+
+// 编辑书签相关状态
+const isEditModalVisible = ref(false);
+const editingBookmark = ref<chrome.bookmarks.BookmarkTreeNode | null>(null);
 
 // --- 生命周期钩子 ---
 // onMounted() 会在组件第一次挂载到 DOM 后执行。
@@ -197,6 +215,84 @@ function findFolderByName(nodes: chrome.bookmarks.BookmarkTreeNode[], name: stri
     }
   }
   return null; // 遍历完所有节点都没找到，返回 null
+}
+
+// --- 编辑书签功能 ---
+
+/**
+ * @description 处理编辑书签事件
+ * @param node 要编辑的书签节点
+ */
+function handleEditBookmark(node: chrome.bookmarks.BookmarkTreeNode) {
+  editingBookmark.value = node;
+  isEditModalVisible.value = true;
+}
+
+/**
+ * @description 关闭编辑模态框
+ */
+function closeEditModal() {
+  isEditModalVisible.value = false;
+  editingBookmark.value = null;
+}
+
+/**
+ * @description 保存书签编辑
+ * @param bookmarkData 编辑后的书签数据
+ */
+async function saveBookmark(bookmarkData: { id: string; title: string; url: string }) {
+  try {
+    // 使用 Chrome 书签 API 更新书签
+    await chrome.bookmarks.update(bookmarkData.id, {
+      title: bookmarkData.title,
+      url: bookmarkData.url
+    });
+
+    // 更新本地状态中的书签数据
+    updateBookmarkInTree(bookmarkRoot.value, bookmarkData.id, bookmarkData.title, bookmarkData.url);
+
+    // 关闭模态框
+    closeEditModal();
+
+    console.log('书签更新成功');
+  } catch (error) {
+    console.error('更新书签失败:', error);
+    alert('更新书签失败，请重试。');
+  }
+}
+
+/**
+ * @description 在书签树中递归更新指定书签的信息
+ * @param node 当前节点
+ * @param id 要更新的书签ID
+ * @param title 新标题
+ * @param url 新URL
+ */
+function updateBookmarkInTree(
+  node: chrome.bookmarks.BookmarkTreeNode | null, 
+  id: string, 
+  title: string, 
+  url: string
+): boolean {
+  if (!node) return false;
+
+  // 如果找到了目标书签，更新它
+  if (node.id === id) {
+    node.title = title;
+    node.url = url;
+    return true;
+  }
+
+  // 如果当前节点有子节点，递归搜索
+  if (node.children) {
+    for (const child of node.children) {
+      if (updateBookmarkInTree(child, id, title, url)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 </script>
 

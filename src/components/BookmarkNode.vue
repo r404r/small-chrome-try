@@ -5,8 +5,13 @@
   -->
 
   <!-- Case 1: 如果节点有 `url` 属性，说明它是一个书签，渲染成一个链接 -->
-  <li v-if="node.url">
+  <li v-if="node.url" class="bookmark-item">
     <a :href="node.url" target="_blank">{{ node.title }}</a>
+    <button class="edit-btn" @click.stop="editBookmark" title="编辑书签">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+      </svg>
+    </button>
   </li>
 
   <!-- Case 2: 如果节点有 `children` 属性，说明它是一个文件夹 -->
@@ -37,6 +42,7 @@
         v-for="child in node.children"
         :key="child.id"
         :node="child"
+        @editBookmark="emit('editBookmark', $event)"
       />
     </ul>
   </li>
@@ -54,13 +60,23 @@ defineOptions({
 // defineProps 用于声明组件的 props。
 // 这里我们声明了一个名为 `node` 的 prop，它的类型是 chrome.bookmarks.BookmarkTreeNode。
 // 这个 prop 从父组件（NewTab.vue 或上一层的 BookmarkNode）接收一个书签或文件夹节点。
-defineProps<{
+const props = defineProps<{
   node: chrome.bookmarks.BookmarkTreeNode;
+}>();
+
+// 定义事件
+const emit = defineEmits<{
+  editBookmark: [node: chrome.bookmarks.BookmarkTreeNode]
 }>();
 
 // 使用 ref 为每个文件夹实例创建一个独立的、响应式的状态，用于控制其是否展开。
 // 初始值为 true，表示默认是展开状态。
 const isExpanded = ref(true);
+
+// 编辑书签函数
+function editBookmark() {
+  emit('editBookmark', props.node);
+}
 </script>
 
 <style scoped>
@@ -114,5 +130,57 @@ a:hover {
   padding-left: 20px;
   border-left: 1px solid #777;
   margin-left: 5px;
+}
+
+/* 书签项样式 */
+.bookmark-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bookmark-item a {
+  flex: 1;
+  margin: 0;
+}
+
+/* 编辑按钮样式 */
+.edit-btn {
+  background: rgba(66, 185, 131, 0.8);
+  border: 1px solid rgba(66, 185, 131, 0.9);
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  color: #fff;
+  opacity: 0.7;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.edit-btn:hover {
+  background: rgba(66, 185, 131, 1);
+  border-color: rgba(66, 185, 131, 1);
+  transform: scale(1.15);
+  opacity: 1;
+  box-shadow: 0 4px 8px rgba(66, 185, 131, 0.4);
+}
+
+.bookmark-item:hover .edit-btn {
+  opacity: 1;
+}
+
+.edit-btn:active {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(66, 185, 131, 0.6);
+}
+
+.edit-btn svg {
+  pointer-events: none;
 }
 </style>
