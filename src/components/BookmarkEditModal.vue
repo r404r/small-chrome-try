@@ -126,6 +126,8 @@ function showDeleteConfirm() {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@100;300;400;500;700;900&display=swap');
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -151,6 +153,7 @@ function showDeleteConfirm() {
   max-height: 90vh;
   overflow: hidden;
   color: #333;
+  font-family: 'Noto Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 .modal-header {
