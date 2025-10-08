@@ -26,17 +26,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 
-// 使用 defineProps 定义一个名为 `title` 的 prop。
-// 这意味着父组件在使用 <CollapsibleSection> 时，必须通过 `title` prop 传递一个字符串进来。
-// 例如: <CollapsibleSection title="这是一个标题">
-defineProps<{
+// 使用 defineProps 定义组件的 props
+const props = defineProps<{
   title: string;
+  storageKey?: string; // 可选的存储键，用于持久化状态
 }>();
 
 // 为每个组件实例创建一个独立的、响应式的状态，用于控制其是否展开。
 const isExpanded = ref(true);
+
+// 组件挂载时从本地存储加载状态
+onMounted(async () => {
+  if (props.storageKey) {
+    try {
+      const result = await chrome.storage.local.get(props.storageKey);
+      if (result[props.storageKey] !== undefined) {
+        isExpanded.value = result[props.storageKey];
+      }
+    } catch (error) {
+      console.warn('Failed to load collapse state:', error);
+    }
+  }
+});
+
+// 监听状态变化并保存到本地存储
+watch(isExpanded, async (newValue) => {
+  if (props.storageKey) {
+    try {
+      await chrome.storage.local.set({ [props.storageKey]: newValue });
+    } catch (error) {
+      console.warn('Failed to save collapse state:', error);
+    }
+  }
+});
 </script>
 
 <style scoped>
