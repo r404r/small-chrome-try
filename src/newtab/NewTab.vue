@@ -5,9 +5,9 @@
     <div class="column">
       <!-- "快捷访问"卡片，包含了两个可折叠区域 -->
       <section class="card">
-        <h2>快捷访问</h2>
+        <h2>Quick Access</h2>
         <!-- "常用网站"折叠区 -->
-        <CollapsibleSection title="常用网站" storageKey="topSitesExpanded">
+        <CollapsibleSection title="Most Visited" storageKey="topSitesExpanded">
           <!-- v-if / v-else 用于条件渲染：当有数据时显示列表，否则显示状态消息 -->
           <div v-if="topSites.length > 0" class="grid-list">
             <!-- v-for 用于遍历 topSites 数组，为每个网站创建一个链接 -->
@@ -20,7 +20,7 @@
           </div>
         </CollapsibleSection>
         <!-- "最近访问"折叠区 -->
-        <CollapsibleSection title="最近访问" storageKey="recentHistoryExpanded">
+        <CollapsibleSection title="Recent Visits" storageKey="recentHistoryExpanded">
           <div v-if="recentHistory.length > 0" class="grid-list">
             <a v-for="item in recentHistory" :key="item.id" :href="item.url" :title="item.title">
               {{ item.title }}
