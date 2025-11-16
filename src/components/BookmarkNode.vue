@@ -5,17 +5,45 @@
   -->
 
   <!-- Case 1: 如果节点有 `url` 属性，说明它是一个书签，渲染成一个链接 -->
-  <li v-if="node.url" class="bookmark-item">
-    <a :href="node.url" target="_blank">{{ node.title }}</a>
+  <li 
+    v-if="node.url" 
+    class="bookmark-item"
+    :class="{ 'dragging': isDragging, 'drag-over': isDragOver }"
+  >
+    <div 
+      class="drag-handle" 
+      title="拖拽移动书签"
+      draggable="true"
+      @dragstart="handleDragStart"
+      @dragend="handleDragEnd"
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+      </svg>
+    </div>
+    <a :href="node.url" target="_blank" @click="handleLinkClick">{{ node.title }}</a>
     <button class="edit-btn" @click.stop="editBookmark" title="编辑书签">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
         <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
       </svg>
     </button>
+    <!-- 拖拽目标区域 -->
+    <div 
+      class="drop-zone"
+      @dragover="handleDragOver"
+      @dragleave="handleDragLeave"
+      @drop="handleDrop"
+    ></div>
   </li>
 
   <!-- Case 2: 如果节点有 `children` 属性，说明它是一个文件夹 -->
-  <li v-else-if="node.children">
+  <li 
+    v-else-if="node.children"
+    :class="{ 'drag-over': isDragOver }"
+    @dragover="handleDragOver"
+    @dragleave="handleDragLeave"
+    @drop="handleDrop"
+  >
     <!-- 文件夹标题行，点击时切换展开/折叠状态 -->
     <div class="folder" @click="isExpanded = !isExpanded">
       <!-- 
@@ -43,6 +71,7 @@
         :key="child.id"
         :node="child"
         @editBookmark="emit('editBookmark', $event)"
+        @moveBookmark="emit('moveBookmark', $event)"
       />
     </ul>
   </li>
@@ -66,16 +95,112 @@ const props = defineProps<{
 
 // 定义事件
 const emit = defineEmits<{
-  editBookmark: [node: chrome.bookmarks.BookmarkTreeNode]
+  editBookmark: [node: chrome.bookmarks.BookmarkTreeNode];
+  moveBookmark: [data: { sourceId: string; targetId: string; position: 'before' | 'after' | 'inside' }];
 }>();
 
 // 使用 ref 为每个文件夹实例创建一个独立的、响应式的状态，用于控制其是否展开。
 // 初始值为 true，表示默认是展开状态。
 const isExpanded = ref(true);
 
+// 拖拽相关状态
+const isDragging = ref(false);
+const isDragOver = ref(false);
+
 // 编辑书签函数
 function editBookmark() {
   emit('editBookmark', props.node);
+}
+
+// 拖拽开始
+function handleDragStart(event: DragEvent) {
+  if (!event.dataTransfer) return;
+  
+  isDragging.value = true;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', props.node.id);
+  
+  // 设置拖拽图像
+  if (event.target instanceof HTMLElement) {
+    event.dataTransfer.setDragImage(event.target, 0, 0);
+  }
+}
+
+// 拖拽结束
+function handleDragEnd() {
+  isDragging.value = false;
+}
+
+// 拖拽悬停
+function handleDragOver(event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  if (!event.dataTransfer) return;
+  
+  const draggedId = event.dataTransfer.getData('text/plain');
+  if (draggedId === props.node.id) return; // 不能拖拽到自己
+  
+  isDragOver.value = true;
+  event.dataTransfer.dropEffect = 'move';
+}
+
+// 拖拽离开
+function handleDragLeave(event: DragEvent) {
+  event.stopPropagation();
+  
+  // 只有当真正离开元素时才取消高亮
+  if (event.target === event.currentTarget) {
+    isDragOver.value = false;
+  }
+}
+
+// 放置
+function handleDrop(event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  if (!event.dataTransfer) return;
+  
+  const draggedId = event.dataTransfer.getData('text/plain');
+  if (draggedId === props.node.id) return; // 不能拖拽到自己
+  
+  isDragOver.value = false;
+  
+  // 确定放置位置
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const y = event.clientY - rect.top;
+  const height = rect.height;
+  
+  let position: 'before' | 'after' | 'inside' = 'after';
+  
+  if (props.node.children) {
+    // 如果是文件夹，可以放置到内部
+    if (y < height * 0.25) {
+      position = 'before';
+    } else if (y > height * 0.75) {
+      position = 'after';
+    } else {
+      position = 'inside';
+    }
+  } else {
+    // 如果是书签，只能放置到前面或后面
+    position = y < height * 0.5 ? 'before' : 'after';
+  }
+  
+  emit('moveBookmark', {
+    sourceId: draggedId,
+    targetId: props.node.id,
+    position
+  });
+}
+
+// 处理链接点击（防止拖拽时误触发）
+function handleLinkClick(event: MouseEvent) {
+  if (isDragging.value) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
 }
 </script>
 
@@ -87,15 +212,15 @@ li {
 }
 
 a {
-  font-size: 1rem;
+  font-size: 0.95rem;
   text-decoration: none;
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  color: #0f172a;
   display: block;
-  padding: 5px 8px;
-  border-radius: 4px;
-  background-color: rgba(0, 0, 0, 0.4);
-  transition: background-color 0.2s;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background-color: #eef2ff;
+  border: 1px solid rgba(79, 70, 229, 0.25);
+  transition: background-color 0.2s, box-shadow 0.2s;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -103,19 +228,21 @@ a {
 }
 
 a:hover {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: #dfe7ff;
+  box-shadow: 0 6px 12px rgba(79, 70, 229, 0.15);
 }
 
 .folder {
   cursor: pointer;
-  font-weight: bold;
-  font-size: 1.1rem;
-  color: #42b983; /* 使用主题绿色以突出显示 */
+  font-weight: 600;
+  font-size: 1rem;
+  color: #4338ca;
   display: flex;
   align-items: center;
-  padding: 4px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  padding: 4px 6px;
   min-width: 0;
+  border-radius: 8px;
+  transition: background-color 0.2s;
 }
 
 .folder-icon {
@@ -124,6 +251,7 @@ a:hover {
   font-size: 0.8em;
   margin-right: 8px;
   flex-shrink: 0;
+  color: #6366f1;
 }
 
 .folder-title {
@@ -142,7 +270,7 @@ a:hover {
 /* 子列表的缩进和左侧竖线 */
 .sub-list {
   padding-left: 20px;
-  border-left: 1px solid #777;
+  border-left: 2px solid rgba(99, 102, 241, 0.2);
   margin-left: 5px;
 }
 
@@ -161,28 +289,26 @@ a:hover {
 
 /* 编辑按钮样式 */
 .edit-btn {
-  background: rgba(66, 185, 131, 0.8);
-  border: 1px solid rgba(66, 185, 131, 0.9);
-  border-radius: 6px;
+  background: #6366f1;
+  border: none;
+  border-radius: 8px;
   padding: 6px;
   cursor: pointer;
   color: #fff;
-  opacity: 0.7;
-  transition: all 0.3s ease;
+  opacity: 0.85;
+  transition: all 0.25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  min-width: 30px;
+  height: 30px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
 }
 
 .edit-btn:hover {
-  background: rgba(66, 185, 131, 1);
-  border-color: rgba(66, 185, 131, 1);
-  transform: scale(1.15);
+  background: #4f46e5;
+  transform: translateY(-1px) scale(1.05);
   opacity: 1;
-  box-shadow: 0 4px 8px rgba(66, 185, 131, 0.4);
 }
 
 .bookmark-item:hover .edit-btn {
@@ -190,11 +316,66 @@ a:hover {
 }
 
 .edit-btn:active {
-  transform: scale(1.05);
-  box-shadow: 0 2px 4px rgba(66, 185, 131, 0.6);
+  transform: scale(0.98);
 }
 
 .edit-btn svg {
+  pointer-events: none;
+}
+
+/* 拖拽手柄样式 */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  cursor: grab;
+  color: rgba(15, 23, 42, 0.4);
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  background-color: #f8fafc;
+}
+
+.drag-handle:hover {
+  color: rgba(15, 23, 42, 0.8);
+  background-color: rgba(99, 102, 241, 0.12);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* 拖拽状态样式 */
+.bookmark-item.dragging {
+  opacity: 0.6;
+  transform: scale(0.98);
+  background-color: rgba(99, 102, 241, 0.15);
+  border: 2px dashed rgba(99, 102, 241, 0.4);
+  border-radius: 10px;
+}
+
+/* 拖拽悬停目标样式 */
+.bookmark-item.drag-over,
+li.drag-over > .folder {
+  background-color: rgba(224, 231, 255, 0.9);
+  border: 2px solid rgba(99, 102, 241, 0.7);
+  border-radius: 10px;
+  box-shadow: 0 12px 20px rgba(99, 102, 241, 0.25);
+}
+
+.bookmark-item.drag-over a {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+/* 文件夹拖拽悬停样式 */
+li.drag-over > .folder {
+  color: #0f172a;
+}
+
+/* 拖拽时禁用指针事件 */
+.bookmark-item.dragging * {
   pointer-events: none;
 }
 </style>

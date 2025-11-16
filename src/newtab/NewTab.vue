@@ -47,6 +47,7 @@
               :key="node.id" 
               :node="node" 
               @editBookmark="handleEditBookmark"
+              @moveBookmark="handleMoveBookmark"
             />
           </ul>
         </div>
@@ -346,6 +347,86 @@ function removeBookmarkFromTree(
 
   return false;
 }
+
+// --- 拖拽移动书签功能 ---
+
+/**
+ * @description 处理书签移动事件
+ * @param data 移动数据，包含源ID、目标ID和位置
+ */
+async function handleMoveBookmark(data: { sourceId: string; targetId: string; position: 'before' | 'after' | 'inside' }) {
+  try {
+    const { sourceId, targetId, position } = data;
+    
+    // 获取源书签和目标书签的信息
+    const [sourceBookmark] = await chrome.bookmarks.get(sourceId);
+    const [targetBookmark] = await chrome.bookmarks.get(targetId);
+    
+    if (!sourceBookmark || !targetBookmark) {
+      console.error('无法找到源书签或目标书签');
+      return;
+    }
+
+    let newParentId: string;
+    let newIndex: number | undefined;
+
+    if (position === 'inside') {
+      // 移动到文件夹内部
+      if (!targetBookmark.children) {
+        console.error('目标不是文件夹，无法移动到内部');
+        return;
+      }
+      newParentId = targetId;
+      newIndex = 0; // 放在文件夹的第一个位置
+    } else {
+      // 移动到目标的前面或后面
+      newParentId = targetBookmark.parentId!;
+      
+      // 获取目标书签在其父文件夹中的位置
+      const [parentFolder] = await chrome.bookmarks.get(newParentId);
+      if (!parentFolder.children) {
+        console.error('无法获取父文件夹信息');
+        return;
+      }
+      
+      const targetIndex = parentFolder.children.findIndex(child => child.id === targetId);
+      if (targetIndex === -1) {
+        console.error('无法找到目标书签在父文件夹中的位置');
+        return;
+      }
+      
+      // 计算新的索引位置
+      if (position === 'before') {
+        newIndex = targetIndex;
+      } else { // position === 'after'
+        newIndex = targetIndex + 1;
+      }
+      
+      // 如果源书签和目标书签在同一个父文件夹中，且源书签在目标书签之前
+      // 需要调整索引，因为移动源书签后，后面的书签索引会前移
+      if (sourceBookmark.parentId === newParentId) {
+        const sourceIndex = parentFolder.children.findIndex(child => child.id === sourceId);
+        if (sourceIndex !== -1 && sourceIndex < targetIndex) {
+          newIndex = Math.max(0, newIndex - 1);
+        }
+      }
+    }
+
+    // 执行移动操作
+    await chrome.bookmarks.move(sourceId, {
+      parentId: newParentId,
+      index: newIndex
+    });
+
+    // 重新加载书签数据以更新UI
+    await loadSelectedBookmarkFolder();
+    
+    console.log('书签移动成功');
+  } catch (error) {
+    console.error('移动书签失败:', error);
+    alert('移动书签失败，请重试。');
+  }
+}
 </script>
 
 <style scoped>
@@ -353,12 +434,14 @@ function removeBookmarkFromTree(
 .container {
   display: flex;
   gap: 2rem;
-  padding: 1rem 2rem;
+  padding: 1.5rem 2.5rem;
   max-width: 100vw;
   box-sizing: border-box;
   min-height: 100vh;
   align-items: flex-start;
   overflow-x: hidden;
+  background: linear-gradient(135deg, #eef2ff 0%, #e3f6ff 100%);
+  color: #1f2933;
 }
 
 .column {
@@ -372,48 +455,50 @@ function removeBookmarkFromTree(
 }
 
 .card {
-  /* 毛玻璃效果的关键样式 */
-  background-color: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(8px);
-
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(6px);
   padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: inherit;
 }
 
 h2 {
   text-align: left;
   margin-top: 0;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.5);
+  color: #0f172a;
 }
 
 .grid-list a,
 .status-message {
-  font-size: 0.9rem;
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  font-size: 0.95rem;
+  color: #1f2933;
   text-decoration: none;
   display: block;
-  padding: 10px;
-  border-radius: 6px;
-  background-color: rgba(0, 0, 0, 0.4);
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: #f4f6fb;
+  border: 1px solid rgba(148, 163, 184, 0.4);
   margin-bottom: 8px;
-  transition: background-color 0.2s, transform 0.2s;
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* 超出部分显示省略号 */
   cursor: pointer;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
 }
 
 .grid-list a:hover {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: #e3ecff;
   transform: translateY(-2px);
-  /* 鼠标悬浮时轻微上移 */
+  box-shadow: 0 8px 16px rgba(79, 70, 229, 0.12);
 }
 
 .bookmark-list ul {
@@ -422,7 +507,8 @@ h2 {
 }
 
 .status-message {
-  background-color: transparent;
+  background-color: #fef3c7;
+  border-color: #fcd34d;
   line-height: 1.5;
   cursor: default;
 }
